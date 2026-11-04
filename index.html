@@ -3,17 +3,116 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Nestkast Controle</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nestkast Controle</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f6f1;font:19px Arial;color:#203c2b}
+header{background:#24583c;color:white;padding:24px;text-align:center}
+h1{font-size:29px;margin:0}
+main{padding:20px;max-width:650px;margin:auto}
+button{background:#24583c;color:white;border:0;border-radius:14px;padding:18px;font-size:20px;font-weight:bold;min-height:60px}
+.wide{width:100%;margin:8px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:white;padding:20px;border-radius:16px;margin:15px 0}
+input,select,textarea{width:100%;padding:14px;font-size:20px;border:2px solid #ccd8cd;border-radius:10px;margin:8px 0 16px}
+label{font-weight:bold}
+.back{background:#e0e9e1;color:#24583c}
+.count{display:flex;align-items:center;gap:10px}
+.count input{text-align:center}
+small{color:#607366}
+</style>
 </head>
-<body style="font-family:Arial; text-align:center; padding:30px; background:#f2f6f1;">
-  <h1 style="color:#24583c;">🦉 Nestkast Controle</h1>
-  <h2>Welkom bij de testversie!</h2>
-  <p>De app is succesvol geopend.</p>
-  <button style="padding:20px; font-size:22px;"
-    onclick="alert('De test werkt!')">
-    Test de app
-  </button>
+<body>
+<header>
+<h1>🦉 Nestkast Controle</h1>
+<p>Eenvoudig registreren</p>
+</header>
+<main id="app"></main>
+<script>
+const app=document.getElementById("app");
+const groups=["RVW1","RVW2","RVW3","RVW4"];
+const key="nestkast-test-v1";
+let data;
+try{
+data=JSON.parse(localStorage.getItem(key));
+}catch(e){}
+if(!data)data={
+boxes:[
+{id:"K001",group:"RVW2",name:"Nestkast 001 - Bosrand"},
+{id:"K002",group:"RVW2",name:"Nestkast 002 - Weide"},
+{id:"K003",group:"RVW2",name:"Nestkast 003 - Eikenlaan"}
+],
+records:[]
+};
+let group="",box="";
+function save(){
+try{localStorage.setItem(key,JSON.stringify(data))}
+catch(e){alert("Opslaan mislukt")}
+}
+function show(html){app.innerHTML=html;window.scrollTo(0,0)}
+function home(){
+show("<h2>Kies je vogelwerkgroep</h2><div class='grid'>"+
+groups.map(g=>"<button onclick=\"choose('"+g+"')\">"+g+"</button>").join("")+
+"</div><div class='card'><p>📱 Mobiele testversie</p><small>Alle gegevens blijven voorlopig op dit apparaat.</small></div>");
+}
+function choose(g){group=g;boxes()}
+function boxes(){
+let list=data.boxes.filter(b=>b.group===group);
+show("<button class='back' onclick='home()'>← Terug</button><h2>"+group+" - Nestkasten</h2>"+
+list.map(b=>"<button class='wide' onclick=\"openBox('"+b.id+"')\">🏠 "+b.name+"</button>").join("")+
+"<div class='card'><h3>Nieuwe nestkast</h3><input id='name' placeholder='Nestkastnummer'><button class='wide' onclick='addBox()'>+ Toevoegen</button></div>");
+}
+function addBox(){
+let name=document.getElementById("name").value.trim();
+if(!name)return alert("Vul een naam in");
+data.boxes.push({id:"K"+Date.now(),group,name});
+save();boxes();
+}
+function openBox(id){box=id;details()}
+function details(){
+let b=data.boxes.find(x=>x.id===box);
+let list=data.records.filter(r=>r.box===box);
+show("<button class='back' onclick='boxes()'>← Terug</button><h2>"+b.name+"</h2>"+
+"<button class='wide' onclick='form()'>+ Nieuwe controle</button>"+
+"<h3>Historie</h3>"+(list.length?list.map(r=>"<div class='card'><b>"+r.date+"</b><p>Eieren: "+r.eggs+" | Jongen: "+r.young+"</p><p>Biometrie: "+r.weight+" gram, vleugel "+r.wing+" mm</p></div>").join(""):"Nog geen controles"));
+}
+function form(){
+show(`<button class="back" onclick="details()">← Terug</button>
+<h2>Nieuwe controle</h2>
+<div class="card">
+<label>Datum</label><input type="date" id="date">
+<label>Vogelsoort</label>
+<select id="species">
+<option>Steenuil</option><option>Kerkuil</option>
+<option>Bosuil</option><option>Torenvalk</option>
+<option>Andere soort</option>
+</select>
+<label>Aantal eieren</label>
+<div class="count"><button onclick="step('eggs',-1)">−</button><input id="eggs" type="number" min="0" value="0"><button onclick="step('eggs',1)">+</button></div>
+<label>Aantal jongen</label>
+<div class="count"><button onclick="step('young',-1)">−</button><input id="young" type="number" min="0" value="0"><button onclick="step('young',1)">+</button></div>
+<h3>Biometrie (test: één jong)</h3>
+<label>Gewicht in gram</label><input id="weight" type="number" min="0" step="0.1">
+<label>Vleugellengte in mm</label><input id="wing" type="number" min="0" step="0.1">
+<label>Opmerkingen</label><textarea id="notes"></textarea>
+<button class="wide" onclick="store()">✓ Controle opslaan</button>
+</div>`);
+document.getElementById("date").value=new Date().toLocaleDateString("en-CA");
+}
+function step(id,n){
+let e=document.getElementById(id);
+e.value=Math.max(0,(Number(e.value)||0)+n);
+}
+function store(){
+let get=id=>document.getElementById(id).value;
+let eggs=Number(get("eggs")),young=Number(get("young"));
+if(!get("date")||!Number.isInteger(eggs)||!Number.isInteger(young)||eggs<0||young<0)return alert("Controleer de datum en aantallen");
+data.records.push({box,date:get("date"),species:get("species"),eggs,young,weight:get("weight"),wing:get("wing"),notes:get("notes")});
+save();alert("Controle opgeslagen!");details();
+}
+home();
+</script>
 </body>
 </html>
